@@ -50,17 +50,19 @@ class Cube_Outline extends Shape {
     }
 }
 
-
-class Base_Scene extends Scene {
+export class Final_project extends Scene {
     /**
-     *  **Base_scene** is a Scene that can be added to any display canvas.
-     *  Setup the shapes, materials, camera, and lighting here.
+     * This Scene object can be added to any display canvas.
+     * We isolate that code so it can be experimented with on its own.
+     * This gives you a very small code sandbox for editing a simple scene, and for
+     * experimenting with matrix transformations.
      */
+
     constructor() {
-        // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         super();
-        this.hover = this.swarm = false;
-        // At the beginning of our program, load one of each of these shape definitions onto the GPU.
+        this.car_pos = [0, 0, 0];
+        this.moving = false;
+
         this.shapes = {
             'cube': new Cube(),
             'outline': new Cube_Outline(),
@@ -74,52 +76,13 @@ class Base_Scene extends Scene {
         };
         // The white material and basic shader are used for drawing the outline.
         this.white = new Material(new defs.Basic_Shader());
+
+        //world view camera
+        this.initial_camera_location = Mat4.look_at(vec3(0, 10, 15), vec3(0, 1, -10), vec3(0, 1, 0));
     }
 
-    display(context, program_state) {
-        // display():  Called once per frame of animation. Here, the base class's display only does
-        // some initial setup.
-
-        // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
-        if (!context.scratchpad.controls) {
-            this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
-            // Define the global camera and projection matrices, which are stored in program_state.
-            program_state.set_camera(Mat4.translation(5, -10, -30));
-        }
-        program_state.projection_transform = Mat4.perspective(
-            Math.PI / 4, context.width / context.height, 1, 100);
-
-        // *** Lights: *** Values of vector or point lights.
-        const light_position = vec4(0, 5, 5, 1);
-        program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
-    }
-}
-
-export class Final_project extends Base_Scene {
-    /**
-     * This Scene object can be added to any display canvas.
-     * We isolate that code so it can be experimented with on its own.
-     * This gives you a very small code sandbox for editing a simple scene, and for
-     * experimenting with matrix transformations.
-     */
-
-    constructor() {
-        super();
-        this.sway = true;
-        this.set_colors();
-        this.car_pos = [0, 0, 0];
-    }
-
-    set_colors() {
-        // Hint:  You might need to create a member variable at somewhere to store the colors, using `this`.
-        // Hint2: You can consider add a constructor for class Final_project, or add member variables in Base_Scene's constructor.
-        this.color_arr = [];
-        for(let i = 0; i <= 7; ++i){
-            this.color_arr.push(color(Math.random(), Math.random(), Math.random(), 1.0));
-        }
-    }
-
-    move_right(){
+    //movement functions, change 0.1 to other value to control speed
+    move_right() {
         this.car_pos[0] = this.car_pos[0] + 0.1;
     }
 
@@ -137,13 +100,22 @@ export class Final_project extends Base_Scene {
 
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
-        this.key_triggered_button("Move left", ["g"], this.move_left);
-        this.key_triggered_button("Move right", ["j"], this.move_right);
-        this.key_triggered_button("Move forward", ["y"], this.move_forward);
-        this.key_triggered_button("Move backward", ["h"], this.move_backward)
+        //buttons to control movements
+        this.key_triggered_button("Move left", ["a"], this.move_left);
+        this.key_triggered_button("Move right", ["d"], this.move_right);
+        this.key_triggered_button("Move forward", ["w"], this.move_forward);
+        this.key_triggered_button("Move backward", ["s"], this.move_backward);
+
+        //buttons to change camera
+        this.new_line();
+        this.key_triggered_button("Car View", ["Control", "1"],
+            () => this.attached = () => this.car);
+        this.key_triggered_button("World View", ["Control", "2"],
+            () => this.attached = () => this.initial_camera_location);
     }
 
     draw_track(context, program_state, model_transform){
+        //adjust z value to change the track
         model_transform = model_transform.times(Mat4.translation(0, 0, -13))
             .times(Mat4.scale(5, 0.01, 15));
         this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic);
@@ -153,18 +125,43 @@ export class Final_project extends Base_Scene {
         model_transform = Mat4.identity()
         model_transform = model_transform.times(Mat4.translation(0, 1, 0))
             .times(Mat4.translation(this.car_pos[0], this.car_pos[1], this.car_pos[2]));
-        this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic);
+        let car_color = hex_color("#bf9f92");
+        this.shapes.cube.draw(context, program_state, model_transform,
+            this.materials.plastic.override({color:car_color}));
+        return model_transform;
     }
 
 
     display(context, program_state) {
-        super.display(context, program_state);
-        const blue = hex_color("#1a9ffa");
-        let model_transform = Mat4.identity();
+
+        if (!context.scratchpad.controls) {
+            this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
+            // Define the global camera and projection matrices, which are stored in program_state.
+            program_state.set_camera(this.initial_camera_location);
+        }
+
+        //controlling the camera
+        if(this.attached !== undefined){
+            let desired = Mat4.look_at(vec3(this.car_pos[0], this.car_pos[1] + 5, this.car_pos[2] + 7.5),
+                vec3(this.car_pos[0], this.car_pos[1], this.car_pos[2] - 10), vec3(0, 1, 0));
+            desired = desired.map((x,i) => Vector.from(program_state.camera_inverse[i]).mix(x, 0.1));
+            program_state.set_camera(desired);
+        }
+
+        program_state.projection_transform = Mat4.perspective(
+            Math.PI / 4, context.width / context.height, 1, 100);
+
+        // *** Lights: *** Values of vector or point lights.
+        const light_position = vec4(0, 5, 5, 1);
+        program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
+
 
         let t = program_state.animation_time/1000;
 
+        let model_transform = Mat4.identity();
+
+        //draw track and car
         this.draw_track(context, program_state, model_transform);
-        this.draw_car(context, program_state, model_transform);
+        this.car = this.draw_car(context, program_state, model_transform);
     }
 }
