@@ -107,6 +107,7 @@ export class Final_project extends Base_Scene {
         super();
         this.sway = true;
         this.set_colors();
+        this.car_pos = [0, 0, 0];
     }
 
     set_colors() {
@@ -118,51 +119,43 @@ export class Final_project extends Base_Scene {
         }
     }
 
+    move_right(){
+        this.car_pos[0] = this.car_pos[0] + 0.1;
+    }
+
+    move_left(){
+        this.car_pos[0] = this.car_pos[0] - 0.1;
+    }
+
+    move_forward(){
+        this.car_pos[2] = this.car_pos[2] - 0.1;
+    }
+
+    move_backward(){
+        this.car_pos[2] = this.car_pos[2] + 0.1;
+    }
+
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
-        this.key_triggered_button("Change Colors", ["c"], this.set_colors);
-        // Add a button for controlling the scene.
-        this.key_triggered_button("Outline", ["o"], () => {
-            if(this.outlined)
-                this.outlined = false;
-            else
-                this.outlined = true;
-        });
-        this.key_triggered_button("Sit still", ["m"], () => {
-            if(this.sway)
-                this.sway = false;
-            else
-                this.sway = true;
-        });
+        this.key_triggered_button("Move left", ["g"], this.move_left);
+        this.key_triggered_button("Move right", ["j"], this.move_right);
+        this.key_triggered_button("Move forward", ["y"], this.move_forward);
+        this.key_triggered_button("Move backward", ["h"], this.move_backward)
     }
 
-    draw_box(context, program_state, model_transform, angle, i) {
-        // Hint:  You can add more parameters for this function, like the desired color, index of the box, etc.
-
-        // defines color
-        let color = this.color_arr[i];
-
-        //multiply matrices
-        model_transform = model_transform.times(Mat4.translation(-1, 1.5, 0))
-            .times(Mat4.rotation(angle,0,0,1))
-            .times(Mat4.translation(1, -1.5, 0))
-            .times(Mat4.translation(0, 3, 0))
-            .times(Mat4.scale(1, 1.5, 1));
-
-        if(i==0){
-            model_transform = Mat4.identity();
-            model_transform = model_transform.times(Mat4.scale(1, 1.5, 1));
-        }
-        //draw
-        if(this.outlined)
-            this.shapes.outline.draw(context, program_state, model_transform, this.white, "LINES");
-        else if(i%2 == 0)
-            this.shapes.triangle_strip.draw(context, program_state, model_transform, this.materials.plastic.override({color:color}), "TRIANGLE_STRIP");
-        else
-            this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color:color}));
-        model_transform = model_transform.times(Mat4.scale(1, 1/1.5, 1));
-        return model_transform;
+    draw_track(context, program_state, model_transform){
+        model_transform = model_transform.times(Mat4.translation(0, 0, -13))
+            .times(Mat4.scale(5, 0.01, 15));
+        this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic);
     }
+
+    draw_car(context, program_state, model_transform){
+        model_transform = Mat4.identity()
+        model_transform = model_transform.times(Mat4.translation(0, 1, 0))
+            .times(Mat4.translation(this.car_pos[0], this.car_pos[1], this.car_pos[2]));
+        this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic);
+    }
+
 
     display(context, program_state) {
         super.display(context, program_state);
@@ -171,21 +164,7 @@ export class Final_project extends Base_Scene {
 
         let t = program_state.animation_time/1000;
 
-        const max_angle = .04 * Math.PI;
-        const w = 0.5 * Math.PI;
-        const b = 0.5 * max_angle;
-        let angle = b + b * Math.sin(w * (t-1));
-
-        if(!this.sway)
-            angle = max_angle;
-
-        // Example for drawing a cube, you can remove this line if needed
-        // this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color:blue}));
-
-        for(let i = 0; i <= 7; i = i+1){
-            //this.shapes.cube.draw(context, program_state, model_transform, this.materials.plastic.override({color:blue}));
-
-            model_transform = this.draw_box(context, program_state, model_transform, angle, i);
-        }
+        this.draw_track(context, program_state, model_transform);
+        this.draw_car(context, program_state, model_transform);
     }
 }
