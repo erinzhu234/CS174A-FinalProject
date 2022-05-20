@@ -61,7 +61,7 @@ export class Final_project extends Scene {
     constructor() {
         super();
         this.car_pos = [0, 0, 0];
-        this.moving = false;
+        this.view_mode = 0;
 
         this.shapes = {
             'cube': new Cube(),
@@ -98,6 +98,17 @@ export class Final_project extends Scene {
         this.car_pos[2] = this.car_pos[2] + 0.1;
     }
 
+    view_car(){
+        this.view_mode = 1;
+    }
+    view_world(){
+        this.view_mode = 0;
+    }
+
+    reset_car(){
+        this.car_pos = [0, 0, 0];
+    }
+
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
         //buttons to control movements
@@ -108,10 +119,12 @@ export class Final_project extends Scene {
 
         //buttons to change camera
         this.new_line();
-        this.key_triggered_button("Car View", ["Control", "1"],
-            () => this.attached = () => this.car);
-        this.key_triggered_button("World View", ["Control", "2"],
-            () => this.attached = () => this.initial_camera_location);
+        this.key_triggered_button("Car View", ["Control", "1"], this.view_car);
+        this.key_triggered_button("World View", ["Control", "2"], this.view_world);
+
+        //functional buttons (e.g. reset)
+        this.new_line();
+        this.key_triggered_button("reset car", ["Control", "r"], this.reset_car);
     }
 
     draw_track(context, program_state, model_transform){
@@ -141,12 +154,16 @@ export class Final_project extends Scene {
         }
 
         //controlling the camera
-        if(this.attached !== undefined){
-            let desired = Mat4.look_at(vec3(this.car_pos[0], this.car_pos[1] + 5, this.car_pos[2] + 7.5),
+        let desired = this.initial_camera_location;
+        if(this.view_mode == 1){
+            desired = Mat4.look_at(vec3(this.car_pos[0], this.car_pos[1] + 5, this.car_pos[2] + 7.5),
                 vec3(this.car_pos[0], this.car_pos[1], this.car_pos[2] - 10), vec3(0, 1, 0));
-            desired = desired.map((x,i) => Vector.from(program_state.camera_inverse[i]).mix(x, 0.1));
-            program_state.set_camera(desired);
         }
+        else if(this.view_mode == 0) {
+            desired = this.initial_camera_location;
+        }
+        desired = desired.map((x, i) => Vector.from(program_state.camera_inverse[i]).mix(x, 0.1));
+        program_state.set_camera(desired);
 
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, 1, 100);
