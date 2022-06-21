@@ -273,7 +273,7 @@ export class Final_project extends Scene {
         model_transform = model_transform.times(Mat4.translation(0, 1, 0))
             .times(Mat4.translation(this.car_pos[0], this.car_pos[1], this.car_pos[2]))
             .times(Mat4.scale(0.8, 0.6, 1.3));
-        this.shapes.cube.draw(context, program_state, model_transform, this.materials.car);
+        this.shapes.cube.draw(context, program_state, model_transform, this.materials.car.override({color: car_color}));
 
         // draw the lid
         model_transform = Mat4.identity();
